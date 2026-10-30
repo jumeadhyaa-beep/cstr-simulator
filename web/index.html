@@ -72,18 +72,46 @@ const row = document.createElement('div'); row.className = 'row';
 row.innerHTML = '<button id="reset">إعادة</button><button id="pause">إيقاف</button>';
 ctl.append(row);
 
+// ---- PID (mirrors cstr/control.py): manipulates Tc to hold T at the setpoint ----
+const pid = { on:false, Tsp:362.45, Kc:2, tauI:5, bias:310, I:0 };
+const pidBox = document.createElement('div'); pidBox.style.marginTop = '12px';
+pidBox.innerHTML = '<label style="justify-content:flex-start;gap:8px"><input type="checkbox" id="pid_on"><span>متحكم PID (يتحكم في Tc)</span></label>';
+ctl.append(pidBox);
+document.getElementById('pid_on').onchange = () => {
+  pid.on = document.getElementById('pid_on').checked; pid.I = 0; pid.bias = P.Tc; sliders.Tc.r.disabled = pid.on;
+};
+const pidDefs = [['Tsp','نقطة الضبط Tsp [K]',280,420,0.05],['Kc','الكسب Kc',0,20,0.1],['tauI','زمن التكامل τi [min]',0.5,20,0.1]];
+for (const [key, name, min, max, step] of pidDefs) {
+  const l = document.createElement('label'); l.innerHTML = `<span>${name}</span><output id="o_${key}"></output>`;
+  const r = Object.assign(document.createElement('input'), { type:'range', min, max, step, value:pid[key] });
+  const show = () => document.getElementById('o_'+key).textContent = (+r.value).toString();
+  r.oninput = () => { pid[key] = +r.value; show(); };
+  sliders[key] = { r, show }; pidBox.append(l, r); show();
+}
+function pidStep(T, dt) {
+  const e = pid.Tsp - T, u = pid.bias + pid.Kc*(e + pid.I/pid.tauI);
+  const us = Math.min(350, Math.max(270, u));
+  if (u === us || (u > us) === (e < 0)) pid.I += e*dt;     // anti-windup
+  return us;
+}
+
 // Presets found with cstr.model.steady_states / is_stable.
 const presets = [
+  ['PID يثبّت الحالة غير المستقرة (يخمد التذبذب)', { q:75, Tf:350, Tc:310 }, { on:true, Tsp:362.45, Kc:2, tauI:5 }],
   ['افتراضي (حالة مستقرة واحدة)', { q:100, Tf:350, Tc:300 }],
   ['حالتان مستقرتان (انقر على الرسم السفلي لتغيير البداية)', { q:150, Tf:340, Tc:290 }],
   ['تذبذب مستمر', { q:75, Tf:350, Tc:310 }],
 ];
 const pr = document.createElement('div'); pr.style.marginTop = '12px';
 pr.innerHTML = '<div style="color:var(--muted);font-size:.9rem">إعدادات جاهزة</div>';
-for (const [name, vals] of presets) {
+for (const [name, vals, pidVals] of presets) {
   const b = document.createElement('button');
   b.textContent = name; b.style.cssText = 'display:block;width:100%;margin-top:6px;text-align:start';
-  b.onclick = () => { for (const k in vals) { sliders[k].r.value = vals[k]; P[k] = vals[k]; sliders[k].show(); } reset(); };
+  b.onclick = () => { for (const k in vals) { sliders[k].r.value = vals[k]; P[k] = vals[k]; sliders[k].show(); }
+    const c = pidVals || { on:false };
+    for (const k in c) if (k !== 'on') { pid[k] = c[k]; sliders[k].r.value = c[k]; sliders[k].show(); }
+    const box = document.getElementById('pid_on'); box.checked = c.on; box.onchange();
+    reset(); };
   pr.append(b);
 }
 ctl.append(pr);
@@ -92,7 +120,7 @@ ctl.append(pr);
 const TMAX = 20, DT = 0.005, SPEED = 2;      // min of process time per real second
 let x, t, hist, paused = false;
 let axes = null;                                  // phase-plane axis ranges for click-to-start
-function reset(x0 = [0.5, 350]) { x = x0.slice(); t = 0; hist = [{ t, CA:x[0], T:x[1] }]; }
+function reset(x0 = [0.5, 350]) { pid.I = 0; x = x0.slice(); t = 0; hist = [{ t, CA:x[0], T:x[1] }]; }
 reset();
 document.getElementById('reset').onclick = () => reset();
 document.getElementById('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? 'متابعة' : 'إيقاف'; };
@@ -134,7 +162,10 @@ function frame(now) {
   const dtReal = Math.min((now-last)/1000, 0.1); last = now;
   if (!paused) {
     const target = t + dtReal*SPEED;
-    while (t < target) { x = rk4(x, DT); t += DT; }
+    while (t < target) {
+      if (pid.on) { P.Tc = pidStep(x[1], DT); sliders.Tc.r.value = P.Tc; sliders.Tc.show(); }
+      x = rk4(x, DT); t += DT;
+    }
     hist.push({ t, CA:x[0], T:x[1] });
     if (hist.length > 4000) hist.shift();
   }

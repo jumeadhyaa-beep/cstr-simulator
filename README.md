@@ -31,11 +31,23 @@ Preset buttons load interesting regimes: bistability (q=150, Tf=340, Tc=290:
 stable states at 314 K and 388 K; click the phase portrait to choose the start
 point) and sustained oscillations (q=75, Tf=350, Tc=310).
 
+## PID control
+
+`cstr/control.py` provides a PID controller (anti-windup, output limits
+270-350 K) that manipulates the coolant temperature Tc to hold the reactor
+temperature at a setpoint:
+
+```python
+from cstr.control import PID, simulate_closed_loop
+p = CSTRParams(q=75, Tf=350, Tc=310)          # open loop: sustained oscillation
+t, CA, T, Tc = simulate_closed_loop(p, PID(Kc=2, tau_i=5, bias=310), 362.45, [0.5, 350])
+```
+
+With Kc=2 and tau_i=5 min the controller stabilizes the unstable steady state
+(362.45 K) and removes the oscillation. The web UI has a PID checkbox with
+setpoint/Kc/tau_i sliders and a preset that demonstrates this.
+
 ## Tests
 
     pip install numpy scipy pytest
     python -m pytest
-
-## Roadmap
-
-PID control.
