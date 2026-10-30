@@ -23,6 +23,11 @@ for s in steady_states(p):
 With the default parameters there is one stable steady state
 (CA ~ 0.877 mol/L, T ~ 324.5 K) and two unstable ones.
 
+## Interactive UI
+
+Open `web/index.html` in a browser (no build step). Sliders for q, Tf, Tc, CAf and UA
+change the parameters live; plots show T(t) and the CA-T phase portrait.
+
 ## Tests
 
     pip install numpy scipy pytest
@@ -30,4 +35,4 @@ With the default parameters there is one stable steady state
 
 ## Roadmap
 
-Interactive UI, multiple-steady-state/oscillation exploration, PID control.
+Multiple-steady-state/oscillation exploration, PID control.
