@@ -1,5 +1,7 @@
 # cstr-simulator
 
+[![tests](https://github.com/jumeadhyaa-beep/cstr-simulator/actions/workflows/tests.yml/badge.svg)](https://github.com/jumeadhyaa-beep/cstr-simulator/actions/workflows/tests.yml)
+
 Simulator for a non-isothermal Continuous Stirred-Tank Reactor (CSTR) with a
 first-order exothermic reaction A -> B and Arrhenius kinetics.
 

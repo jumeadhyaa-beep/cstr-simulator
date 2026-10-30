@@ -2,16 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>محاكي CSTR</title>
 <style>
   :root { --bg:#fff; --fg:#1b1f24; --muted:#6b7280; --card:#f3f4f6; --a:#2563eb; --b:#dc2626; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111418; --fg:#e5e7eb; --muted:#9ca3af; --card:#1c2128; --a:#60a5fa; --b:#f87171; }
+    :root:not([data-theme="light"]) { --bg:#111418; --fg:#e5e7eb; --muted:#9ca3af; --card:#1c2128; --a:#60a5fa; --b:#f87171; color-scheme:dark; }
   }
+  :root[data-theme="dark"] { --bg:#111418; --fg:#e5e7eb; --muted:#9ca3af; --card:#1c2128; --a:#60a5fa; --b:#f87171; color-scheme:dark; }
   * { box-sizing: border-box; }
-  body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
-         font:15px/1.5 system-ui, sans-serif; max-width:1100px; margin-inline:auto; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+  .app { max-width:1100px; margin-inline:auto; padding-block:16px;
+         padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  .grid > * { min-width:0; }
   h1 { font-size:1.3rem; margin:0 0 12px; }
   .grid { display:grid; grid-template-columns:300px 1fr; gap:16px; }
   @media (max-width:760px) { .grid { grid-template-columns:1fr; } }
@@ -26,6 +29,7 @@
 </style>
 </head>
 <body>
+<main class="app" dir="rtl" lang="ar">
 <h1>محاكي مفاعل CSTR (تفاعل طارد للحرارة A → B)</h1>
 <div class="grid">
   <div class="card" id="controls"></div>
@@ -35,6 +39,7 @@
     <canvas id="ph" width="800" height="440"></canvas>
   </div>
 </div>
+</main>
 <script>
 // ---- Model (mirrors cstr/model.py) ----
 const P = { q:100, V:100, CAf:1, Tf:350, Tc:300, k0:7.2e10, E_R:8750, dH:-5e4, rho:1000, Cp:0.239, UA:5e4 };
