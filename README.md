@@ -27,6 +27,9 @@ With the default parameters there is one stable steady state
 
 Open `web/index.html` in a browser (no build step). Sliders for q, Tf, Tc, CAf and UA
 change the parameters live; plots show T(t) and the CA-T phase portrait.
+Preset buttons load interesting regimes: bistability (q=150, Tf=340, Tc=290:
+stable states at 314 K and 388 K; click the phase portrait to choose the start
+point) and sustained oscillations (q=75, Tf=350, Tc=310).
 
 ## Tests
 
@@ -35,4 +38,4 @@ change the parameters live; plots show T(t) and the CA-T phase portrait.
 
 ## Roadmap
 
-Multiple-steady-state/oscillation exploration, PID control.
+PID control.

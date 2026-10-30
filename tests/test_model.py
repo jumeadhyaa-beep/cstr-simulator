@@ -35,3 +35,16 @@ def test_higher_feed_temperature_raises_steady_temperature():
     lo = steady_states(P.with_(Tf=340.0))[-1]
     hi = steady_states(P.with_(Tf=355.0))[-1]
     assert hi[1] > lo[1]
+
+
+def test_bistable_preset_has_two_stable_states():
+    p = P.with_(q=150.0, Tf=340.0, Tc=290.0)
+    stable = [s for s in steady_states(p) if is_stable(s, p)]
+    assert len(stable) == 2
+
+
+def test_oscillating_preset_has_no_stable_state_and_sustained_cycle():
+    p = P.with_(q=75.0, Tf=350.0, Tc=310.0)
+    assert not any(is_stable(s, p) for s in steady_states(p))
+    _, _, T = simulate(p, [0.5, 350.0], t_end=100.0, n_points=2000)
+    assert T[-500:].max() - T[-500:].min() > 10

@@ -58,24 +58,43 @@ const defs = [
   ['UA','انتقال الحرارة UA [J/min·K]',0,2e5,1000],
 ];
 const ctl = document.getElementById('controls');
+const sliders = {};
 for (const [key, name, min, max, step] of defs) {
   const l = document.createElement('label');
   l.innerHTML = `<span>${name}</span><output id="o_${key}"></output>`;
   const r = Object.assign(document.createElement('input'), { type:'range', min, max, step, value:P[key] });
   const show = () => document.getElementById('o_'+key).textContent = (+r.value).toPrecision(4).replace(/\.?0+$/,'');
   r.oninput = () => { P[key] = +r.value; show(); };
+  sliders[key] = { r, show };
   ctl.append(l, r); show();
 }
 const row = document.createElement('div'); row.className = 'row';
 row.innerHTML = '<button id="reset">إعادة</button><button id="pause">إيقاف</button>';
 ctl.append(row);
 
+// Presets found with cstr.model.steady_states / is_stable.
+const presets = [
+  ['افتراضي (حالة مستقرة واحدة)', { q:100, Tf:350, Tc:300 }],
+  ['حالتان مستقرتان (انقر على الرسم السفلي لتغيير البداية)', { q:150, Tf:340, Tc:290 }],
+  ['تذبذب مستمر', { q:75, Tf:350, Tc:310 }],
+];
+const pr = document.createElement('div'); pr.style.marginTop = '12px';
+pr.innerHTML = '<div style="color:var(--muted);font-size:.9rem">إعدادات جاهزة</div>';
+for (const [name, vals] of presets) {
+  const b = document.createElement('button');
+  b.textContent = name; b.style.cssText = 'display:block;width:100%;margin-top:6px;text-align:start';
+  b.onclick = () => { for (const k in vals) { sliders[k].r.value = vals[k]; P[k] = vals[k]; sliders[k].show(); } reset(); };
+  pr.append(b);
+}
+ctl.append(pr);
+
 // ---- Simulation loop ----
 const TMAX = 20, DT = 0.005, SPEED = 2;      // min of process time per real second
 let x, t, hist, paused = false;
-function reset() { x = [0.5, 350]; t = 0; hist = [{ t, CA:x[0], T:x[1] }]; }
+let axes = null;                                  // phase-plane axis ranges for click-to-start
+function reset(x0 = [0.5, 350]) { x = x0.slice(); t = 0; hist = [{ t, CA:x[0], T:x[1] }]; }
 reset();
-document.getElementById('reset').onclick = reset;
+document.getElementById('reset').onclick = () => reset();
 document.getElementById('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? 'متابعة' : 'إيقاف'; };
 
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -101,6 +120,15 @@ function plot(cv, series, xr, yr, xl, yl) {
   return { X, Y, c };
 }
 
+document.getElementById('ph').addEventListener('click', e => {
+  if (!axes) return;
+  const cv = e.currentTarget, r = cv.getBoundingClientRect(), m = axes.m;
+  const px = (e.clientX-r.left)/r.width*cv.width, py = (e.clientY-r.top)/r.height*cv.height;
+  const T0 = axes.Tmin + (px-m.l)/(cv.width-m.l-m.r)*(axes.Tmax-axes.Tmin);
+  const CA0 = axes.CAmax*(cv.height-m.b-py)/(cv.height-m.t-m.b);
+  if (T0 > 0 && CA0 >= 0) reset([Math.min(CA0, P.CAf), T0]);
+});
+
 let last = performance.now();
 function frame(now) {
   const dtReal = Math.min((now-last)/1000, 0.1); last = now;
@@ -112,12 +140,13 @@ function frame(now) {
   }
   const t0 = Math.max(0, t-TMAX);
   const vis = hist.filter(h => h.t >= t0);
-  const Tmin = Math.min(P.Tc, ...vis.map(h => h.T))-5, Tmax = Math.max(P.Tf, ...vis.map(h => h.T))+5;
+  const Tmin = Math.min(P.Tc, ...vis.map(h => h.T))-5, Tmax = Math.max(P.Tf+60, ...vis.map(h => h.T))+5;
   // Time series: temperature (red) on the plot, conversion X in a second pass below.
   plot(document.getElementById('ts'),
        [{ color:'--b', pts: vis.map(h => [h.t, h.T]) }], [t0, t0+TMAX], [Tmin, Tmax], 'الزمن [min]', 'T [K]');
   const ph = plot(document.getElementById('ph'),
        [{ color:'--a', pts: vis.map(h => [h.T, h.CA]) }], [Tmin, Tmax], [0, Math.max(P.CAf, 0.1)*1.05], 'T [K]', 'CA [mol/L]');
+  axes = { Tmin, Tmax, CAmax: Math.max(P.CAf, 0.1)*1.05, m: { l:60, r:16, t:16, b:40 } };
   ph.c.fillStyle = cssv('--b'); ph.c.beginPath(); ph.c.arc(ph.X(x[1]), ph.Y(x[0]), 5, 0, 7); ph.c.fill();
   document.getElementById('stats').textContent =
     `t=${t.toFixed(2)} min   CA=${x[0].toFixed(4)}   T=${x[1].toFixed(2)} K   X=${((1-x[0]/P.CAf)*100).toFixed(1)}%`;
